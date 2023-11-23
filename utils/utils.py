@@ -1,13 +1,22 @@
 from patchify import patchify
 import tifffile as tiff
 import os
-from PIL import Image
+from PIL import Image, ImageDraw
 from math import floor
 import shutil
 from sklearn.model_selection import train_test_split
+from torchvision.transforms import v2
+import random
+from torchvision import transforms
 
 
-def make_split(class_name, dataset_dir="Datasets/Crow_classify", split_p=0.2):
+def make_split(
+    class_name, dataset_dir="Datasets/Crow_classify", classify=False, split_p=0.2
+):
+    """
+    Saves the data in a given path into train and test folders
+    """
+
     class_dir = os.path.join(dataset_dir, class_name)
     samples_list = os.listdir(class_dir)
 
@@ -17,8 +26,12 @@ def make_split(class_name, dataset_dir="Datasets/Crow_classify", split_p=0.2):
         samples_list, test_size=split_p, random_state=42
     )
 
-    train_dir = os.path.join(dataset_dir, "train", class_name)
-    test_dir = os.path.join(dataset_dir, "test", class_name)
+    train_dir = os.path.join(dataset_dir, "train")
+    test_dir = os.path.join(dataset_dir, "test")
+
+    if classify:
+        train_dir = os.path.join(dataset_dir, "train", class_name)
+        test_dir = os.path.join(dataset_dir, "test", class_name)
 
     if not os.path.exists(train_dir):
         os.makedirs(train_dir)
@@ -42,11 +55,11 @@ def make_split(class_name, dataset_dir="Datasets/Crow_classify", split_p=0.2):
         shutil.copyfile(sample_path, save_path)
 
 
-def make_patches(
-    dataset_dir,
-    save_dir,
-    patch_size=224,
-):
+def make_patches(dataset_dir, save_dir, patch_size=224, img_format="jpeg"):
+    """
+    Generate patches of the given size from the images into the given directory
+    """
+
     if not os.path.exists(save_dir):
         print("Creating save directory")
         os.makedirs(save_dir)
@@ -72,7 +85,7 @@ def make_patches(
                 for j in range(len(patches_imgs[i])):
                     im = Image.fromarray(patches_imgs[i][j][0])
                     save_path = os.path.join(
-                        save_dir, f"{name.split('.')[0]}_{i}_{j}.jpeg"
+                        save_dir, f"{name.split('.')[0]}_{i}_{j}.{img_format}"
                     )
                     im.save(save_path)
         else:
