@@ -56,12 +56,23 @@ def get_random_sample(samples_dir):
             transforms.RandomHorizontalFlip(0.5),
             transforms.RandomVerticalFlip(0.5),
             v2.RandomResize(15, 30, interpolation=Image.BICUBIC, antialias=True),
+            transforms.RandomRotation((0, 360), expand=True),
         ]
     )
     img = img_transforms(img)
 
-    angle = random.randint(0, 360)
-    img.rotate(angle, resample=Image.BICUBIC, expand=True)
+    alpha = img.split()[-1]
+
+    jitter_range = (0.5, 1.5)
+    jitter = transforms.ColorJitter(
+        brightness=jitter_range,
+        contrast=jitter_range,
+        saturation=jitter_range,
+        hue=(-0.5, 0.5),
+    )
+
+    img = jitter(img)
+    img.putalpha(alpha)
 
     return img
 
