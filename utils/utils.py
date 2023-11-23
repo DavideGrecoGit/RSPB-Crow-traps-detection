@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from torchvision.transforms import v2
 import random
 from torchvision import transforms
+from osgeo import ogr, osr, gdal
 
 
 def make_split(
@@ -92,3 +93,28 @@ def make_patches(dataset_dir, save_dir, patch_size=224, img_format="jpeg"):
             print("Skipping image: patch size too big!")
 
     return os.listdir(save_dir)
+
+
+def get_WGS84(path_tif, x, y):
+    """
+    Returns WGS84 coordinates of pixels x,y
+
+    Source https://stackoverflow.com/questions/50191648/gis-geotiff-gdal-python-how-to-get-coordinates-from-pixel
+    """
+
+    ### Get native coordinates of pixels x,y
+    ds = gdal.Open(path_tif)
+    xoff, a, b, yoff, d, e = ds.GetGeoTransform()
+
+    xp = a * x + b * y + xoff
+    yp = d * x + e * y + yoff
+
+    ### Convert to WGS84
+    # get CRS from dataset
+    crs = osr.SpatialReference()
+    crs.ImportFromWkt(ds.GetProjectionRef())
+    # create lat/long crs with WGS84 datum
+    crsGeo = osr.SpatialReference()
+    crsGeo.ImportFromEPSG(4326)  # 4326 is the EPSG id of lat/long crs
+    t = osr.CoordinateTransformation(crs, crsGeo)
+    return t.TransformPoint(xp, yp)
