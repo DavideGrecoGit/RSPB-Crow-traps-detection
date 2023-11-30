@@ -56,28 +56,30 @@ def make_split(
         shutil.copyfile(sample_path, save_path)
 
 
-def make_patches(dataset_dir, save_dir, patch_size=224, img_format="jpeg"):
+def make_patches(dataset_dir, save_dir, patch_size=224, img_format="jpg"):
     """
     Generate patches of the given size from the images into the given directory
     """
 
     if not os.path.exists(save_dir):
-        print("Creating save directory")
         os.makedirs(save_dir)
 
     original_sample_names = os.listdir(dataset_dir)
 
     for name in original_sample_names:
         sample_path = os.path.join(dataset_dir, name)
+
+        if os.path.isdir(sample_path):
+            continue
+
         image = tiff.imread(sample_path, key=0)
-        print(image.shape)
+
         h, w, c = image.shape
 
         if h >= patch_size and w >= patch_size:
             h_new = floor(h / patch_size) * patch_size
             w_new = floor(w / patch_size) * patch_size
             image = image[:h_new, :w_new, :]
-            print(image.shape)
 
             patches_imgs = patchify(image, (224, 224, 3), step=224)
             print("N patches ", patches_imgs.shape)
@@ -95,7 +97,15 @@ def make_patches(dataset_dir, save_dir, patch_size=224, img_format="jpeg"):
     return os.listdir(save_dir)
 
 
-def get_WGS84(path_tif, x, y):
+def get_patch_info(patch_path):
+    patch_name = os.path.basename(patch_path).split("_")[0]
+    patch_row = int(os.path.basename(patch_path).split("_")[1])
+    patch_col = int(os.path.basename(patch_path).split("_")[2].split(".")[0])
+
+    return patch_name, patch_row, patch_col
+
+
+def get_WGS84(path_tif, x=None, y=None):
     """
     Returns WGS84 coordinates of pixels x,y
 
@@ -105,6 +115,11 @@ def get_WGS84(path_tif, x, y):
     ### Get native coordinates of pixels x,y
     ds = gdal.Open(path_tif)
     xoff, a, b, yoff, d, e = ds.GetGeoTransform()
+
+    if not x:
+        x = int(ds.RasterXSize / 2)
+    if not y:
+        y = int(ds.RasterYSize / 2)
 
     xp = a * x + b * y + xoff
     yp = d * x + e * y + yoff
@@ -117,4 +132,33 @@ def get_WGS84(path_tif, x, y):
     crsGeo = osr.SpatialReference()
     crsGeo.ImportFromEPSG(4326)  # 4326 is the EPSG id of lat/long crs
     t = osr.CoordinateTransformation(crs, crsGeo)
-    return t.TransformPoint(xp, yp)
+    long, lat, z = t.TransformPoint(xp, yp)
+    return lat, long
+
+
+def update_coordinates(
+    coordinates,
+    patch_path,
+    data_tif_path,
+    type,
+    patch_xy=None,
+    patch_size=224,
+    status="to_check",
+):
+    # Get files info
+    patch_name, patch_row, patch_col = get_patch_info(patch_path)
+    tif_path = os.path.join(data_tif_path, patch_name + ".tif")
+
+    if not patch_xy:
+        patch_xy = (int(patch_size / 2), int(patch_size / 2))
+
+    # Get coordinates
+    tif_x = patch_xy[0] + patch_col * patch_size
+    tif_y = patch_xy[1] + patch_row * patch_size
+    c1, c2 = get_WGS84(tif_path, tif_x, tif_y)
+
+    # Update coordinates
+    coordinates[f"{patch_name}_{patch_row}_{patch_col}"] = (f"{c1},{c2}", type, status)
+    print(f"\n{patch_name}_{patch_row}_{patch_col} @ {c1},{c2}")
+
+    return coordinates

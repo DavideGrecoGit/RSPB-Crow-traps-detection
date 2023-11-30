@@ -2,6 +2,8 @@ Datasets/
 *.pt
 runs/
 .vscode/
+ultralytics/
+WMS/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
