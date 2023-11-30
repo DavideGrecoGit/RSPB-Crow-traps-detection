@@ -136,15 +136,16 @@ def get_WGS84(path_tif, x=None, y=None):
     return lat, long
 
 
-def update_coordinates(
-    coordinates,
+def get_patch_coordinates(
     patch_path,
     data_tif_path,
-    type,
     patch_xy=None,
     patch_size=224,
-    status="to_check",
 ):
+    """
+    Returns the patch ID (patch-name_row_col) and coordinates of a given patch
+    """
+
     # Get files info
     patch_name, patch_row, patch_col = get_patch_info(patch_path)
     tif_path = os.path.join(data_tif_path, patch_name + ".tif")
@@ -157,8 +158,4 @@ def update_coordinates(
     tif_y = patch_xy[1] + patch_row * patch_size
     c1, c2 = get_WGS84(tif_path, tif_x, tif_y)
 
-    # Update coordinates
-    coordinates[f"{patch_name}_{patch_row}_{patch_col}"] = (f"{c1},{c2}", type, status)
-    print(f"\n{patch_name}_{patch_row}_{patch_col} @ {c1},{c2}")
-
-    return coordinates
+    return f"{patch_name}_{patch_row}_{patch_col}", c1, c2
