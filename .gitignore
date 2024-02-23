@@ -1,9 +1,13 @@
 Datasets/
+Experiments/
+ultralytics/
 *.pt
 runs/
 .vscode/
 ultralytics/
 WMS/
+constants.py
+wms_api.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
